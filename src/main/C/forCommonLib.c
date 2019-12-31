@@ -18,6 +18,7 @@
 
 
 #include "forCommonLib.h"
+#include <stdlib.h>
 
 // LIBRARY ROUTINES
 // These library routines aid transfer of two dimensional arrays or matrics

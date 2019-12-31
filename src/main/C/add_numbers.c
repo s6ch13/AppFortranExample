@@ -22,6 +22,7 @@
 
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "forCommonLib.h"
 
 // Format of include should be "packagename_classname"

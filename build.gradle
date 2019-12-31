@@ -175,7 +175,7 @@ task compileCForCommonLib(type: Exec) {
   group "Build"
   description "Compiles the C sources for common header"
 	 commandLine 'gcc', '-c', '-o', forCommonLib, '-I', sysHeadersDir, '-I' ,sysHeadersDir2,
-      '-I', forCommonLibHeader, src,  '-std=c99',platformFlag ,'-static-libgcc',arch
+      '-I', forCommonLibHeader, src,  '-std=c99',platformFlag ,arch
       
   dependsOn prepareC
 }
