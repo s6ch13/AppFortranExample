@@ -1,0 +1,306 @@
+// Common Build file for AddNumbers
+// This gradle build file is a derivative of the work by Willie Wheer
+// https://medium.com/wwblog/java-fortran-integration-using-jni-7376879f45cd
+
+// pre-requisites
+// gfortran should be installed in the system.  
+// java should be installed in the system
+
+plugins {
+  	id 'application'
+
+}
+
+def currentOS = org.gradle.internal.os.OperatingSystem.current()
+def platform
+
+// define if to compile 32b or 64b.
+// for 32b , set arch as -m32.  for 64b set arch as -m64
+ext.arch = '-m64'
+// set the jdk version.  use jdk 1.8 for 32b and jdk11 of or above for 64b.
+ext.jdkver = 11
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+
+compileJava {
+	sourceCompatibility = jdkver
+   	targetCompatibility = jdkver
+   	options.fork = true
+}
+
+	
+repositories {
+    mavenLocal()
+    jcenter()
+}	
+
+// define location of platform specific libraries.
+if (currentOS.isWindows()) {
+    platform = 'win'
+
+	// If you are building for 32 bit systems, you need to use 32 bit version of jdk 1.8 or earlier. 
+	if (arch == '-m32') {
+		ext.jdkver = 1.8
+		
+		// find the location of libgfortran-4.dll and put it here.  it will be in your mingw directory
+		ext.fortranLib = 
+			file("C:/Program Files (x86)/mingw-w64/i686-7.3.0-posix-sjlj-rt_v5-rev0/mingw32/bin/libgfortran-4.dll")
+		ext.sysHeadersDir = 
+			file("c:/program files (x86)/java/zulujdk-8u222-b10/include")
+  		ext.sysHeadersDir2 = 
+  			file("c:/program files (x86)/java/zulujdk-8u222-b10/include/win32") 
+
+		
+  		ext.lib = file("build/libs/win-x86")
+  		ext.jarName =  "AddNumbers-w32.jar"
+	}
+
+	// If you are building for 64 bit systems, you need to use 64 bit version of jdk 9 or later.
+	// In this example we are using jdk11  
+	if (arch == '-m64') { 
+		// find the location of libgfortran-4.dll and put it here.  it will be in your mingw directory
+    	ext.fortranLib = file("C:/Program Files/mingw-w64/mingw64/bin/libgfortran-4.dll")
+		ext.sysHeadersDir = file("c:/program files/java/openjdk-11u-11.0.3+7/include/")
+    	ext.sysHeadersDir2 = file("c:/program files/java/openjdk-11u-11.0.3+7/include/win32")
+  		ext.lib = file("build/libs/win-x64")
+  		ext.jarName =  "AddNumbers-w64.jar"
+	}
+    
+    ext.platformFlag = '-mwindows'
+    ext.gfortran = 'gfortran'
+    
+} else if (currentOS.isMacOsX()) {
+	
+    platform = 'mac'
+    // for mac, the java is usually installed in the below directory
+  	ext.sysHeadersDir =
+      file("/System/Library/Frameworks/JavaVM.framework/Headers")  
+    ext.sysHeadersDir2 = ''  
+    ext.lib = file("${buildDir}/libs/mac")
+    ext.jarName =  "AddNumbers-mac.jar"    
+    ext.platformFlag =''
+	ext.gfortran = '/usr/local/bin/gfortran'
+    
+} else if (currentOS.isLinux()) {
+    platform = 'linux'
+}
+
+ext.forCommonLibHeader = file("./src/main/c/forCommonLib.h")    
+
+
+
+sourceSets {
+	main {
+		java {
+        	srcDirs= ["src/main/java"]
+            outputDir = file("${buildDir}/classes")
+         }
+		resources {
+        	srcDirs= ["src/main/java/"]
+         }
+	}
+}
+
+
+mainClassName = 'appFortranExample.Main'
+
+// Create directory for storing fortran object files
+task prepareFortran {
+  
+	mkdir "${buildDir}/fortran"
+}
+
+
+// Compile the fortran source code
+task compileFortran(type: Exec) {
+  	ext.src = file("src/main/fortran/AddNumbers.FOR")
+  	ext.obj = file("${buildDir}/fortran/AddNumbers.o")
+
+  	group "Build"
+  	description "Compiles the Fortran sources for Add Numbers"
+	
+	if (platform == 'win') { 
+		executable "cmd"
+		commandLine 'gfortran',arch,platformFlag,'-I',sysHeadersDir2,
+		'-finit-local-zero', '-finit-real=zero','-finit-integer=0',
+	  	'-o',  obj,  '-c', src
+	} else if (platform == 'mac') { 
+		commandLine '/usr/local/bin/gfortran',arch,
+		  '-finit-local-zero', '-finit-real=zero','-finit-integer=0',
+	  	'-o',  obj,  '-c', src 	  
+	}
+}
+
+// Create build directory to store C object files
+task prepareC {
+	mkdir "${buildDir}/c"
+}
+
+// Create JNI header files
+task generateJniHeaders(type: Exec) {
+
+  def classpath = sourceSets.main.java.outputDir
+  def jniHeadersDir = file("${buildDir}/c/jni-headers")
+
+  group "Build"
+  description "Generates the JNI headers for Pygen."
+  
+  
+  // with jdk8.x  
+	if (jdkver == 1.8) { 
+	  commandLine 'javah'  ,'-d', jniHeadersDir, '-classpath', classpath,
+	      'appFortranExample.AddNumbers'
+	}
+
+	// changes with jdk 10
+	if (jdkver >= 10) {
+ 		commandLine 'javac', '-h', jniHeadersDir, '-classpath', classpath,
+      		'src/main/java/appFortranExample/AddNumbers.java' 
+	}
+      
+  dependsOn classes, prepareC
+}
+
+
+
+// Compile the C common lib which contains routines for converting 
+// 2 dimensional arrays from java format to fortran format and back
+
+task compileCForCommonLib(type: Exec) {
+
+  ext.src = file("./src/main/c/forCommonLib.c")
+  ext.forCommonLib = file("${buildDir}/c/forCommonLib.o")
+
+  group "Build"
+  description "Compiles the C sources for common header"
+	 commandLine 'gcc', '-c', '-o', forCommonLib, '-I', sysHeadersDir, '-I' ,sysHeadersDir2,
+      '-I', forCommonLibHeader, src,  '-std=c99',platformFlag ,'-static-libgcc',arch
+      
+  dependsOn prepareC
+}
+
+// Compile the C code for add numbers
+task compileC(type: Exec) {
+
+  ext.forCommonLib = file("${buildDir}/c/forCommonLib.o")  
+  ext.jniHeadersDir = file("${buildDir}/c/jni-headers")
+  ext.src = file("./src/main/c/add_numbers.c")
+  ext.obj = file("${buildDir}/c/add_numbers.o")
+
+  group "Build"
+  description "Compiles the C sources for add numbers"
+	 commandLine 'gcc', '-c', '-o', obj, '-I', sysHeadersDir, '-I' ,sysHeadersDir2,
+      '-I', jniHeadersDir,'-I',forCommonLib,  src,  '-std=c99',platformFlag ,arch
+      
+  dependsOn generateJniHeaders, compileFortran, compileCForCommonLib
+}
+
+// create directories for storing the jnilib files
+task prepareJniLib {
+
+	mkdir "${buildDir}/libs/win-x86"
+	mkdir "${buildDir}/libs/win-x64"
+	mkdir "${buildDir}/libs/mac"
+	
+}
+
+task copyLibs(type: Copy) {
+
+	if (arch == '-m64' && platform == 'win') {
+	    from ('c:/Program Files/mingw-w64/mingw64/bin/') {
+    		include 'libgfortran-4.dll'
+      		include 'libgcc_s_sjlj-1.dll'
+      		include 'libquadmath-0.dll'
+     	}
+    	into lib
+    } else if (arch == '-m32' && platform == 'win') { 
+    	from ('c:/Program Files (x86)/mingw-w64/mingw64/bin/') {
+     	 	include 'libgfortran-4.dll'
+      	 	include 'libgcc_s_sjlj-1.dll'
+      		include 'libquadmath-0.dll'       
+    	}	 
+    	into lib
+    } else if (platform == 'mac') { 
+	
+    }
+    
+    dependsOn prepareJniLib    
+}
+
+// build the jnilib files.  For windows its created as dll's.  for mac its created as .so
+
+task buildJniLib(type: Exec) {
+
+ 	if (platform=='win') {
+ 		ext.jniLib = file("${lib}/lib_addnumbers_driver.dll")
+ 		ext.fortranLib = file("${lib}/libgfortran-4.dll")
+	 	ext.cLib = file("${lib}/libgcc_s_sjlj-1.dll")
+ 		ext.qmath = file("${lib}/libquadmath-0.dll")
+ 		
+ 		  commandLine(
+    'gcc','-Wall','-D_JNI_IMPLEMENTATION_', '-Wl,--kill-at', '-shared',arch, '-o', jniLib, fortranLib,cLib,qmath,
+    "${buildDir}/c/forCommonLib.o","${buildDir}/fortran/AddNumbers.o", "${buildDir}/c/add_numbers.o")
+ 		
+ 	} else { 
+ 		ext.jniLib = file("${lib}/lib_addnumbers_driver.so")	
+	    ext.fortranLib = file("/usr/local/gfortran/lib/libgfortran.dylib")
+ 
+     commandLine( 'g++', '-dynamiclib', arch,'-o', jniLib, fortranLib,
+    "${buildDir}/c/forCommonLib.o","${buildDir}/fortran/AddNumbers.o", "${buildDir}/c/add_numbers.o",
+    '-framework', 'JavaVM')
+ 		
+	}
+
+ 
+  dependsOn copyLibs,compileFortran, compileC, prepareJniLib
+}
+
+task copyJars (type: Copy) {
+    def fromDir = "build/libs/"
+	def toDir = "./"
+	include jarName
+ 
+    // copy jars to lib folder:
+    from fromDir
+    into toDir
+}
+
+
+tasks.withType(JavaCompile) {
+    options.warnings = false
+}
+
+build.dependsOn buildJniLib,copyJars
+
+
+// create a final jar build file
+jar {
+
+    archiveName = jarName
+
+    from {
+
+      configurations.runtime.collect {
+            it.isDirectory() ? it : zipTree(it)
+       }
+
+      configurations.compile.collect {
+            it.isDirectory() ? it : zipTree(it)
+       }
+     }
+     
+     manifest {
+        attributes (
+        'Main-Class': 'appFortranExample.Main',
+         // add classpath to Manifest; see http://stackoverflow.com/questions/30087427/add-classpath-in-manifest-file-of-jar-in-gradle
+         //"Class-Path": '. lib/' + configurations.default.collect { it.getName() }.join(' lib/')
+        )
+        
+     }
+
+   exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA'
+}
+
+
+
