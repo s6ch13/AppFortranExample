@@ -2,19 +2,28 @@
 c$$$    AddNumbers.for
 c$$$    Copyright (C) 2019  Sriram C.
 c$$$
-c$$$    This program is free software: you can redistribute it and/or modify
-c$$$    it under the terms of the GNU General Public License as published by
-c$$$    the Free Software Foundation, either version 3 of the License, or
-c$$$    (at your option) any later version.
+c$$$    Redistribution and use in source and binary forms, with or without
+c$$$    modification, are permitted provided that the following conditions 
+c$$$    are met:
 c$$$
-c$$$    This program is distributed in the hope that it will be useful,
-c$$$    but WITHOUT ANY WARRANTY; without even the implied warranty of
-c$$$    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-c$$$    GNU General Public License for more details.
+c$$$    1. Redistributions of source code must retain the above copyright notice
+c$$$    this list of conditions and the following disclaimer.
+c$$$    2. Redistributions in binary form must reproduce the above copyright 
+c$$$    notice, this list of conditions and the following disclaimer in the 
+c$$$    documentation and/or other materials provided with the distribution.
 c$$$
-c$$$    You should have received a copy of the GNU General Public License
-c$$$    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
+c$$$    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+c$$$    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+c$$$    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+c$$$    PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+c$$$    OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+c$$$    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+c$$$    LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+c$$$    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+c$$$    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT 
+c$$$    LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY 
+c$$$    WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY 
+c$$$    OF SUCH DAMAGE. 
 
 
 c       Add 2 numbers A and B and store the result in C
