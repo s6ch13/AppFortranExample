@@ -75,7 +75,7 @@ if (currentOS.isWindows()) {
     platform = 'mac'
     // for mac, the java is usually installed in the below directory
   	ext.sysHeadersDir =
-      file("/System/Library/Frameworks/JavaVM.framework/Headers")  
+      file("/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk/System/Library/Frameworks/JavaVM.framework/Versions/A/Headers")  
     ext.sysHeadersDir2 = ''  
     ext.lib = file("${buildDir}/libs/mac")
     ext.jarName =  "AddNumbers-mac.jar"    
@@ -84,6 +84,16 @@ if (currentOS.isWindows()) {
     
 } else if (currentOS.isLinux()) {
     platform = 'linux'
+  	ext.sysHeadersDir = file("/usr/lib/jvm/adoptopenjdk-11-hotspot-amd64/include")  
+    ext.sysHeadersDir2 = ''  
+   
+   	ext.fortranLib = file("/usr/lib/x86_64-linux-gnu/libgfortran.so.4.0.0")
+    ext.lib = file("${buildDir}/libs/linux")
+    
+    ext.jarName =  "AddNumbers-linux.jar"    
+    ext.platformFlag =''
+	ext.gfortran = '/usr/bin/gfortran'
+
 }
 
 ext.forCommonLibHeader = file("./src/main/c/forCommonLib.h")    
@@ -125,11 +135,16 @@ task compileFortran(type: Exec) {
 		commandLine 'gfortran',arch,platformFlag,'-I',sysHeadersDir2,
 		'-finit-local-zero', '-finit-real=zero','-finit-integer=0',
 	  	'-o',  obj,  '-c', src
-	} else if (platform == 'mac') { 
+	} else if (platform == 'mac' ) { 
 		commandLine '/usr/local/bin/gfortran',arch,
 		  '-finit-local-zero', '-finit-real=zero','-finit-integer=0',
 	  	'-o',  obj,  '-c', src 	  
+	} else if (platform == 'linux' ) { 
+		commandLine '/usr/bin/gfortran',arch,
+		  '-finit-local-zero', '-finit-real=zero','-finit-integer=0',
+	  	'-o',  obj,  '-c', src 	  
 	}
+	
 }
 
 // Create build directory to store C object files
@@ -202,7 +217,7 @@ task prepareJniLib {
 	mkdir "${buildDir}/libs/win-x86"
 	mkdir "${buildDir}/libs/win-x64"
 	mkdir "${buildDir}/libs/mac"
-	
+	mkdir "${buildDir}/libs/linux"	
 }
 
 task copyLibs(type: Copy) {
@@ -242,7 +257,7 @@ task buildJniLib(type: Exec) {
     'gcc','-Wall','-D_JNI_IMPLEMENTATION_', '-Wl,--kill-at', '-shared',arch, '-o', jniLib, fortranLib,cLib,qmath,
     "${buildDir}/c/forCommonLib.o","${buildDir}/fortran/AddNumbers.o", "${buildDir}/c/add_numbers.o")
  		
- 	} else { 
+ 	} else if (platform == 'mac') { 
  		ext.jniLib = file("${lib}/lib_addnumbers_driver.so")	
 	    ext.fortranLib = file("/usr/local/gfortran/lib/libgfortran.dylib")
  
@@ -250,7 +265,14 @@ task buildJniLib(type: Exec) {
     "${buildDir}/c/forCommonLib.o","${buildDir}/fortran/AddNumbers.o", "${buildDir}/c/add_numbers.o",
     '-framework', 'JavaVM')
  		
+	} else if (platform == 'linux') { 
+ 		ext.jniLib = file("${lib}/lib_addnumbers_driver.so")	
+ 
+     commandLine( 'g++', '-dynamiclib', arch,'-o', jniLib, fortranLib,
+    "${buildDir}/c/forCommonLib.o","${buildDir}/fortran/AddNumbers.o", "${buildDir}/c/add_numbers.o")
+ 		
 	}
+	
 
  
   dependsOn copyLibs,compileFortran, compileC, prepareJniLib
