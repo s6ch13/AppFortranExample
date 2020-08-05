@@ -12,7 +12,7 @@ plugins {
 }
 
 def currentOS = org.gradle.internal.os.OperatingSystem.current()
-def platform
+ext.platform = 'linux'
 
 // define if to compile 32b or 64b.
 // for 32b , set arch as -m32.  for 64b set arch as -m64
@@ -84,9 +84,17 @@ if (currentOS.isWindows()) {
     
 } else if (currentOS.isLinux()) {
     platform = 'linux'
+    ext.sysHeadersDir = file("/usr/lib/jvm/adoptopenjdk-11-hotspot-amd64/include")
+
+    ext.sysHeadersDir2 = file("/usr/lib/jvm/adoptopenjdk-11-hotspot-amd64/include/linux")
+    ext.lib = file("${buildDir}/libs/linux-amd64")
+    ext.jarName =  "AddNumbers-linux.jar"    
+    ext.platformFlag ='-O2'
+//	ext.gfortran = '/usr/bin/gfortran'
+
 }
 
-ext.forCommonLibHeader = file("./src/main/c/forCommonLib.h")    
+ext.forCommonLibHeader = file("./src/main/c/")    
 
 
 
@@ -101,6 +109,7 @@ sourceSets {
          }
 	}
 }
+
 
 
 mainClassName = 'appFortranExample.Main'
@@ -129,7 +138,13 @@ task compileFortran(type: Exec) {
 		commandLine '/usr/local/bin/gfortran',arch,
 		  '-finit-local-zero', '-finit-real=zero','-finit-integer=0',
 	  	'-o',  obj,  '-c', src 	  
+	} else if (platform == 'linux') { 
+		commandLine '/usr/bin/gfortran',arch,
+		  '-finit-local-zero', '-finit-real=zero','-finit-integer=0',
+	  	'-o',  obj,  '-c', src 	  
 	}
+
+	
 }
 
 // Create build directory to store C object files
@@ -168,15 +183,15 @@ task generateJniHeaders(type: Exec) {
 // 2 dimensional arrays from java format to fortran format and back
 
 task compileCForCommonLib(type: Exec) {
-
+     
   ext.src = file("./src/main/c/forCommonLib.c")
   ext.forCommonLib = file("${buildDir}/c/forCommonLib.o")
 
   group "Build"
   description "Compiles the C sources for common header"
-	 commandLine 'gcc', '-c', '-o', forCommonLib, '-I', sysHeadersDir, '-I' ,sysHeadersDir2,
-      '-I', forCommonLibHeader, src,  '-std=c99',platformFlag ,arch
-      
+
+  commandLine ('/usr/bin/gcc', '-c','-std=c99',arch,platformFlag,  '-o', forCommonLib, '-I', sysHeadersDir, '-I' ,sysHeadersDir2,'-I',forCommonLibHeader,src)
+
   dependsOn prepareC
 }
 
@@ -191,7 +206,7 @@ task compileC(type: Exec) {
   group "Build"
   description "Compiles the C sources for add numbers"
 	 commandLine 'gcc', '-c', '-o', obj, '-I', sysHeadersDir, '-I' ,sysHeadersDir2,
-      '-I', jniHeadersDir,'-I',forCommonLib,  src,  '-std=c99',platformFlag ,arch
+      '-I', jniHeadersDir, src,  '-std=c99',arch,platformFlag
       
   dependsOn generateJniHeaders, compileFortran, compileCForCommonLib
 }
@@ -202,7 +217,7 @@ task prepareJniLib {
 	mkdir "${buildDir}/libs/win-x86"
 	mkdir "${buildDir}/libs/win-x64"
 	mkdir "${buildDir}/libs/mac"
-	
+	mkdir "${buildDir}/libs/linux-amd64"
 }
 
 task copyLibs(type: Copy) {
@@ -242,13 +257,20 @@ task buildJniLib(type: Exec) {
     'gcc','-Wall','-D_JNI_IMPLEMENTATION_', '-Wl,--kill-at', '-shared',arch, '-o', jniLib, fortranLib,cLib,qmath,
     "${buildDir}/c/forCommonLib.o","${buildDir}/fortran/AddNumbers.o", "${buildDir}/c/add_numbers.o")
  		
- 	} else { 
+ 	} else if (platform == 'mac') { 
  		ext.jniLib = file("${lib}/lib_addnumbers_driver.so")	
 	    ext.fortranLib = file("/usr/local/gfortran/lib/libgfortran.dylib")
  
      commandLine( 'g++', '-dynamiclib', arch,'-o', jniLib, fortranLib,
     "${buildDir}/c/forCommonLib.o","${buildDir}/fortran/AddNumbers.o", "${buildDir}/c/add_numbers.o",
     '-framework', 'JavaVM')
+ 		
+	} else if (platform == 'linux') { 
+ 		ext.jniLib = file("${lib}/lib_addnumbers_driver.so")		
+		ext.fortranLib = file("/usr/lib/gcc/x86_64-linux-gnu/7/libgfortran.so")
+		
+     commandLine( 'g++','-shared', '-dynamiclib', arch,'-o', jniLib, fortranLib,
+    "${buildDir}/c/forCommonLib.o","${buildDir}/fortran/AddNumbers.o", "${buildDir}/c/add_numbers.o")
  		
 	}
 
