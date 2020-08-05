@@ -12,7 +12,7 @@ plugins {
 }
 
 def currentOS = org.gradle.internal.os.OperatingSystem.current()
-ext.platform = 'linux'
+ext.platform = ''
 
 // define if to compile 32b or 64b.
 // for 32b , set arch as -m32.  for 64b set arch as -m64
