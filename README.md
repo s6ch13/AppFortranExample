@@ -4,6 +4,8 @@ Example of linking fortran code with java code using JNI
 This is a working example that leverages the work done by Willie Wheeler at
 https://medium.com/wwblog/java-fortran-integration-using-jni-7376879f45cd
 
+and development work at https://www.gemsoftware.org Geotechnical Engineering Modelling Software (GEMS)
+
 Enhancements : 
 a) Common gradle build file for mac and windows
 b) Supports 32b and 64b generation
