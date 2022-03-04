@@ -1,5 +1,5 @@
 # AppFortranExample
-Example of linking fortran code with java code using JNI
+Example of linking fortran code with java code using JNI.  This example passes values from a java function to a fortran subroutine and returns some values back via reference to the java calling function.  
 
 This is a working example that leverages the work done by Willie Wheeler at
 https://medium.com/wwblog/java-fortran-integration-using-jni-7376879f45cd
